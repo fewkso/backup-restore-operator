@@ -167,7 +167,12 @@ func DownloadFromS3WithPrefix(client *minio.Client, prefix, bucket string) (stri
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	objectCh := client.ListObjectsV2(bucket, prefix, false, doneCh)
+	var objectCh <-chan minio.ObjectInfo
+	if client.EndpointURL().Host == "storage.googleapis.com" {
+		objectCh = client.ListObjects(bucket, prefix, false, doneCh)
+	} else {
+		objectCh = client.ListObjectsV2(bucket, prefix, false, doneCh)
+	}
 	for object := range objectCh {
 		if object.Err != nil {
 			log.Errorf("failed to list objects in backup buckets [%s]: %v", bucket, object.Err)
